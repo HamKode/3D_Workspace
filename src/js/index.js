@@ -1,251 +1,184 @@
 import '../styles/index.css'
-
 import * as THREE from 'three'
-import * as dat from 'dat.gui'
-
-import Stats from 'three/examples/jsm/libs/stats.module'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js'
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 
 import BasicCharacterController from './movements/BasicCharacterController'
-import ThirdPersonCamera from './cameras/ThirdPersonCamera'
+import ThirdPersonCamera        from './cameras/ThirdPersonCamera'
+import {
+  buildRoom, buildDesk, buildLaptop, buildMonitor,
+  buildChair, buildShelf, buildLamp, buildWallFrame,
+  buildKeyboard, buildMouse, buildCeilingLight, buildFloorPlant,
+} from './room/Room'
+import { InteractionManager } from './room/InteractionManager'
 
-export default class Demo {
+class OfficeApp {
   constructor() {
-    this.gui = new dat.GUI({ width: 350 })
-
-    this.cameraFolder = this.gui.addFolder('Camera')
-    this.ambientLightFolder = this.gui.addFolder('Ambient Light')
-    this.directionalLightFolder = this.gui.addFolder('Directional Light')
-
-    this.parameters = {
-      thirdPersonCamera: true,
-    }
-
-    this.cameraFolder
-      .add(this.parameters, 'thirdPersonCamera')
-      .onChange((value) => {
-        console.log({ value, cam: this.camera })
-      })
-      .name('Third Person Camera')
-
-    // Init model
-    this.init()
+    this._initRenderer()
+    this._initScene()
+    this._initLights()
+    this._buildOffice()
+    this._initCharacter()
+    this._initInteractions()
+    this._setupResize()
+    this._render()
   }
 
-  init() {
-    this.stats = Stats()
-    document.body.appendChild(this.stats.dom)
-
-    this.time = new THREE.Clock()
-    this.previousTime = 0
-
-    this.mixers = []
-    this.currentAction = null
-
+  _initRenderer() {
     this.container = document.getElementById('webgl-container')
-    this.width = this.container.offsetWidth
-    this.height = this.container.offsetHeight
+    this.W = this.container.offsetWidth
+    this.H = this.container.offsetHeight
 
-    // Renderer
-    this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
-    })
+    this.renderer = new THREE.WebGLRenderer({ antialias: true })
     this.renderer.shadowMap.enabled = true
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    this.renderer.shadowMap.type    = THREE.PCFSoftShadowMap
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-    this.renderer.setSize(this.width, this.height)
-
+    this.renderer.setSize(this.W, this.H)
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping
+    this.renderer.toneMappingExposure = 0.9
     this.container.appendChild(this.renderer.domElement)
+  }
 
-    // Camera
-    const fov = 60
-    const aspect = this.width / this.height
-    const near = 1.0
-    const far = 2000.0
-    this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far)
-    this.camera.position.set(25, 10, 35)
+  _initScene() {
+    this.clock    = new THREE.Clock()
+    this.prevTime = 0
 
-    // Scene
     this.scene = new THREE.Scene()
-    this.scene.background = new THREE.Color(0xa0a0a0)
-    this.scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000)
+    this.scene.background = new THREE.Color(0x1a1a2e)
+    this.scene.fog = new THREE.Fog(0x1a1a2e, 60, 120)
 
-    // Light
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 3.7)
-    directionalLight.position.set(25, 80, 30)
-    directionalLight.target.position.set(0, 0, 0)
-    directionalLight.castShadow = true
-    directionalLight.shadow.bias = -0.001
-    directionalLight.shadow.mapSize.width = 2048
-    directionalLight.shadow.mapSize.height = 2048
-    directionalLight.shadow.camera.near = 0.1
-    directionalLight.shadow.camera.far = 500.0
-    directionalLight.shadow.camera.near = 0.5
-    directionalLight.shadow.camera.far = 500.0
-    directionalLight.shadow.camera.left = 100
-    directionalLight.shadow.camera.right = -100
-    directionalLight.shadow.camera.top = 100
-    directionalLight.shadow.camera.bottom = -100
-    this.scene.add(directionalLight)
-
-    this.directionalLightFolder.add(directionalLight, 'castShadow')
-
-    this.directionalLightFolder.add(directionalLight, 'visible')
-
-    this.directionalLightFolder
-      .add(directionalLight, 'intensity')
-      .min(0)
-      .max(100)
-      .step(0.001)
-      .name(`intensity`)
-    this.directionalLightFolder
-      .add(directionalLight.position, 'x')
-      .min(0)
-      .max(100)
-      .step(0.001)
-      .name(`light position X`)
-    this.directionalLightFolder
-      .add(directionalLight.position, 'y')
-      .min(0)
-      .max(100)
-      .step(0.001)
-      .name(`light position Y`)
-    this.directionalLightFolder
-      .add(directionalLight.position, 'z')
-      .min(0)
-      .max(100)
-      .step(0.001)
-      .name(`light position Z`)
-
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7)
-    this.scene.add(ambientLight)
-    this.ambientLightFolder
-      .add(ambientLight, 'intensity')
-      .min(0)
-      .max(6)
-      .step(0.1)
-
-    // Orbit Controls
-    this.orbitControls = new OrbitControls(
-      this.camera,
-      this.renderer.domElement
-    )
-    // this.orbitControls.enableDamping = true
-    this.orbitControls.target.set(0, 20, 0)
-    this.orbitControls.update()
-
-    // Ground
-    const grid = new THREE.GridHelper(150, 10, 0x000000, 0x000000)
-    grid.material.opacity = 0.2
-    grid.material.transparent = true
-
-    const plane = new THREE.Mesh(
-      new THREE.PlaneGeometry(150, 150, 10, 10),
-      new THREE.MeshStandardMaterial({
-        color: 'white',
-      })
-    )
-    plane.castShadow = false
-    plane.receiveShadow = true
-    plane.rotation.x = -Math.PI / 2
-
-    this.scene.add(plane, grid)
-
-    this.setupResize()
-    this.loadAnimatedModel()
-    this.render()
+    this.camera = new THREE.PerspectiveCamera(60, this.W / this.H, 0.5, 500)
+    this.camera.position.set(0, 18, 30)
   }
 
-  resize() {
-    this.width = this.container.offsetWidth
-    this.height = this.container.offsetHeight
+  _initLights() {
+    this.scene.add(new THREE.AmbientLight(0xffeedd, 0.4))
 
-    this.camera.aspect = this.width / this.height
-    this.camera.updateProjectionMatrix()
+    const sun = new THREE.DirectionalLight(0xfff5e0, 1.8)
+    sun.position.set(10, 40, 10)
+    sun.castShadow = true
+    sun.shadow.mapSize.set(2048, 2048)
+    sun.shadow.camera.near = 0.5
+    sun.shadow.camera.far  = 200
+    sun.shadow.camera.left = sun.shadow.camera.bottom = -50
+    sun.shadow.camera.right = sun.shadow.camera.top   =  50
+    sun.shadow.bias = -0.001
+    this.scene.add(sun)
 
-    this.renderer.setSize(this.width, this.height)
+    const ceilFill = new THREE.PointLight(0xfff8e7, 1.2, 60)
+    ceilFill.position.set(0, 26, -10)
+    this.scene.add(ceilFill)
+
+    this.lampLight = new THREE.PointLight(0xffd580, 2.5, 28)
+    this.lampLight.position.set(10, 24, -20)
+    this.lampLight.castShadow = true
+    this.scene.add(this.lampLight)
+
+    this.monitorGlow = new THREE.PointLight(0x4488ff, 0.5, 18)
+    this.monitorGlow.position.set(1, 18, -20)
+    this.scene.add(this.monitorGlow)
   }
 
-  setupResize() {
-    window.addEventListener('resize', this.resize.bind(this), false)
+  _buildOffice() {
+    buildRoom(this.scene)
+    buildCeilingLight(this.scene)
+
+    this.deskGroup    = buildDesk(this.scene)
+    this.laptopGroup  = buildLaptop(this.scene)
+    this.monitorGroup = buildMonitor(this.scene)
+    this.chairGroup   = buildChair(this.scene)
+    this.shelfGroup   = buildShelf(this.scene)
+    this.lampGroup    = buildLamp(this.scene)
+    this.frameGroup   = buildWallFrame(this.scene)
+    buildKeyboard(this.scene)
+    buildMouse(this.scene)
+    buildFloorPlant(this.scene)
   }
 
-  loadAnimatedModel() {
+  _initCharacter() {
     this.controls = new BasicCharacterController({
       camera: this.camera,
-      scene: this.scene,
-      path: '/models/girl/',
+      scene:  this.scene,
+      path:   '/models/girl/',
     })
 
     this.thirdPersonCamera = new ThirdPersonCamera({
       camera: this.camera,
       target: this.controls,
     })
-  }
 
-  /**
-   * Load any model and play first animation
-   * from different path and position
-   */
-  loadAnimatedModelAndPlay(path, modelFile, animFile, offset) {
-    const loader = new FBXLoader()
-    loader.setPath(path)
+    // Camera focus state
+    this._focusActive  = false
+    this._focusPos     = new THREE.Vector3()
+    this._focusLook    = new THREE.Vector3()
+    this._focusLookCur = new THREE.Vector3()
 
-    loader.load(modelFile, (fbx) => {
-      fbx.scale.setScalar(0.1)
-      fbx.traverse((child) => {
-        child.castShadow = true
-      })
-      fbx.position.copy(offset)
-
-      const anim = new FBXLoader()
-      anim.setPath(path)
-
-      anim.load(animFile, (anim) => {
-        const m = new THREE.AnimationMixer(fbx)
-        this.mixers.push(m)
-
-        const idle = m.clipAction(anim.animations[0])
-        idle.play()
-      })
-
-      this.scene.add(fbx)
+    // Return to third-person on any movement key
+    const moveKeys = new Set(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'])
+    window.addEventListener('keydown', (e) => {
+      if (moveKeys.has(e.key.toLowerCase()) && this._focusActive) {
+        this._focusActive = false
+      }
     })
   }
 
-  modelUpdates(deltaTime) {
-    // Animation
-    this.mixers?.map((mix) => mix.update(deltaTime))
+  _initInteractions() {
+    this.interactions = new InteractionManager({
+      camera:    this.camera,
+      renderer:  this.renderer,
+      scene:     this.scene,
+      lampLight: this.lampLight,
+      lampGroup: this.lampGroup,
+      onCameraFocus: (pos, look) => {
+        this._focusPos.copy(pos)
+        this._focusLook.copy(look)
+        this._focusLookCur.copy(this.camera.position)
+        this._focusActive = true
+      },
+      // camera focus targets updated for new layout
+    })
 
-    // Movements
-    this.controls?.update(deltaTime)
-
-    // Camera
-    const isFreeCam = !this.parameters?.thirdPersonCamera
-    this.thirdPersonCamera.update(deltaTime, isFreeCam)
+    this.interactions.register(this.lampGroup,    'lamp',    '💡 Click to toggle lamp on/off')
+    this.interactions.register(this.laptopGroup,  'laptop',  '💻 Click to open laptop')
+    this.interactions.register(this.monitorGroup, 'monitor', '🖥️ Click to view project showcase')
+    this.interactions.register(this.chairGroup,   'chair',   '🪑 Click to focus desk view')
+    this.interactions.register(this.deskGroup,    'desk',    '🖥 Click to focus desk area')
+    this.interactions.register(this.shelfGroup,   'shelf',   '📚 Click to browse bookshelf')
+    this.interactions.register(this.frameGroup,   'frame',   '🎨 Click to open Art Studio')
   }
 
-  render() {
-    this.stats.begin()
+  _setupResize() {
+    window.addEventListener('resize', () => {
+      this.W = this.container.offsetWidth
+      this.H = this.container.offsetHeight
+      this.camera.aspect = this.W / this.H
+      this.camera.updateProjectionMatrix()
+      this.renderer.setSize(this.W, this.H)
+    })
+  }
 
-    const elapsedTime = this.time.getElapsedTime()
-    const deltaTime = elapsedTime - this.previousTime
-    this.previousTime = elapsedTime
+  _render() {
+    requestAnimationFrame(this._render.bind(this))
 
-    this.modelUpdates(deltaTime)
+    const elapsed   = this.clock.getElapsedTime()
+    const deltaTime = elapsed - this.prevTime
+    this.prevTime   = elapsed
 
+    // Subtle monitor glow pulse
+    this.monitorGlow.intensity = 0.5 + Math.sin(elapsed * 1.2) * 0.15
+
+    this.controls?.update(deltaTime)
+
+    if (this._focusActive) {
+      // Smooth camera lerp to focus position
+      this.camera.position.lerp(this._focusPos, 0.05)
+      this._focusLookCur.lerp(this._focusLook, 0.05)
+      this.camera.lookAt(this._focusLookCur)
+    } else {
+      this.thirdPersonCamera?.update(deltaTime)
+    }
+
+    this.interactions?.update()
     this.renderer.render(this.scene, this.camera)
-
-    window.requestAnimationFrame(this.render.bind(this))
-
-    this.stats.end()
   }
 }
 
-// const env = process.env.NODE_ENV
-window.addEventListener('DOMContentLoaded', () => {
-  const demo = new Demo()
-  window.demo = demo
-})
+window.addEventListener('DOMContentLoaded', () => { new OfficeApp() })

@@ -3,17 +3,206 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Three.JS FBX Loader</title>
+    <title>3D Interactive Office</title>
   </head>
-
   <body>
     <div id="root">
       <div id="webgl-container"></div>
 
-      <div id="panel-controls">
-        Use w,s,a,d to move, Shift to run, Space to dance.
+      <!-- Controls HUD -->
+      <div id="controls-hint">
+        <span>↑↓←→ / WASD — Move</span>
+        <span>Shift — Run</span>
+        <span>Space — Dance</span>
+        <span>🖱 Hover &amp; Click — Interact</span>
       </div>
 
+      <!-- Lamp status badge -->
+      <div id="lamp-badge" class="lamp-on">
+        <span id="lamp-icon">💡</span>
+        <span id="lamp-label">Lamp ON</span>
+      </div>
+
+      <!-- Toast notification -->
+      <div id="toast" class="hidden"></div>
+
+      <!-- Hover Tooltip -->
+      <div id="tooltip" class="hidden"></div>
+
+      <!-- LAPTOP OVERLAY -->
+      <div id="laptop-overlay" class="panel hidden">
+        <div class="panel-inner laptop-panel">
+          <button class="panel-close" data-target="laptop-overlay">✕</button>
+          <div class="laptop-header">
+            <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+            <span class="laptop-title">~/workspace — zsh</span>
+          </div>
+          <div class="terminal-body">
+            <div class="terminal-line"><span class="prompt">➜</span> <span class="cmd">whoami</span></div>
+            <div class="terminal-output">Saad — Full Stack &amp; 3D Web Developer</div>
+            <div class="terminal-line"><span class="prompt">➜</span> <span class="cmd">cat skills.txt</span></div>
+            <div class="terminal-output">React · Node.js · Three.js · TypeScript · AWS · PostgreSQL</div>
+            <div class="terminal-line"><span class="prompt">➜</span> <span class="cmd">ls projects/</span></div>
+            <div class="terminal-output file-list">
+              <span>3d-portfolio/</span><span>ecommerce-app/</span><span>ai-chat/</span><span>dashboard/</span>
+            </div>
+            <div class="terminal-line"><span class="prompt">➜</span> <span class="cmd">git status</span></div>
+            <div class="terminal-output success">On branch main — nothing to commit, working tree clean ✓</div>
+            <div class="terminal-line blink-cursor"><span class="prompt">➜</span> <span class="cursor">█</span></div>
+          </div>
+          <div class="laptop-footer">
+            <span class="tag">VS Code</span><span class="tag">Node v20</span><span class="tag">Git</span><span class="tag">macOS</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MONITOR PROJECT SHOWCASE -->
+      <div id="monitor-overlay" class="panel hidden">
+        <div class="panel-inner monitor-panel">
+          <button class="panel-close" data-target="monitor-overlay">✕</button>
+          <h2 class="panel-title">🖥️ Project Showcase</h2>
+          <p class="panel-subtitle">Click any project to learn more</p>
+          <div class="project-grid">
+            <div class="project-card" data-color="#7eb8f7">
+              <div class="project-thumb" style="background: linear-gradient(135deg,#1a1a4e,#3a6fd8)">
+                <span class="project-icon">🌐</span>
+              </div>
+              <div class="project-info">
+                <h3>3D Portfolio</h3>
+                <p>Interactive Three.js office walkthrough with character controls</p>
+                <div class="project-tags"><span class="tag">Three.js</span><span class="tag">WebGL</span></div>
+              </div>
+            </div>
+            <div class="project-card" data-color="#2ecc71">
+              <div class="project-thumb" style="background: linear-gradient(135deg,#0d3320,#27ae60)">
+                <span class="project-icon">📦</span>
+              </div>
+              <div class="project-info">
+                <h3>E-Commerce Platform</h3>
+                <p>Full-stack store with cart, payments, and admin dashboard</p>
+                <div class="project-tags"><span class="tag">React</span><span class="tag">Node.js</span><span class="tag">Stripe</span></div>
+              </div>
+            </div>
+            <div class="project-card" data-color="#e74c3c">
+              <div class="project-thumb" style="background: linear-gradient(135deg,#3a0a0a,#c0392b)">
+                <span class="project-icon">🤖</span>
+              </div>
+              <div class="project-info">
+                <h3>AI Chat Interface</h3>
+                <p>Real-time chat with OpenAI GPT-4, streaming responses</p>
+                <div class="project-tags"><span class="tag">OpenAI</span><span class="tag">WebSocket</span></div>
+              </div>
+            </div>
+            <div class="project-card" data-color="#f39c12">
+              <div class="project-thumb" style="background: linear-gradient(135deg,#3a2000,#d68910)">
+                <span class="project-icon">📊</span>
+              </div>
+              <div class="project-info">
+                <h3>Analytics Dashboard</h3>
+                <p>Real-time data visualization with D3.js and live WebSocket feeds</p>
+                <div class="project-tags"><span class="tag">D3.js</span><span class="tag">PostgreSQL</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SHELF / BOOKS OVERLAY -->
+      <div id="shelf-overlay" class="panel hidden">
+        <div class="panel-inner shelf-panel">
+          <button class="panel-close" data-target="shelf-overlay">✕</button>
+          <h2 class="panel-title">📚 Bookshelf</h2>
+          <p class="panel-subtitle">A curated reading list from the shelf</p>
+          <div class="books-grid">
+            <div class="book-card" style="--book-color:#e74c3c">
+              <div class="book-spine">CC</div>
+              <div class="book-info">
+                <h3>Clean Code</h3>
+                <p>Robert C. Martin</p>
+                <span class="book-tag">Software Craft</span>
+              </div>
+            </div>
+            <div class="book-card" style="--book-color:#3498db">
+              <div class="book-spine">PP</div>
+              <div class="book-info">
+                <h3>The Pragmatic Programmer</h3>
+                <p>Hunt &amp; Thomas</p>
+                <span class="book-tag">Best Practices</span>
+              </div>
+            </div>
+            <div class="book-card" style="--book-color:#2ecc71">
+              <div class="book-spine">JS</div>
+              <div class="book-info">
+                <h3>You Don't Know JS</h3>
+                <p>Kyle Simpson</p>
+                <span class="book-tag">JavaScript</span>
+              </div>
+            </div>
+            <div class="book-card" style="--book-color:#f39c12">
+              <div class="book-spine">3J</div>
+              <div class="book-info">
+                <h3>Three.js Journey</h3>
+                <p>Bruno Simon</p>
+                <span class="book-tag">3D / WebGL</span>
+              </div>
+            </div>
+            <div class="book-card" style="--book-color:#9b59b6">
+              <div class="book-spine">DI</div>
+              <div class="book-info">
+                <h3>Designing Data-Intensive Apps</h3>
+                <p>Martin Kleppmann</p>
+                <span class="book-tag">Systems</span>
+              </div>
+            </div>
+            <div class="book-card" style="--book-color:#1abc9c">
+              <div class="book-spine">CR</div>
+              <div class="book-info">
+                <h3>Cracking the Coding Interview</h3>
+                <p>Gayle Laakmann McDowell</p>
+                <span class="book-tag">Interviews</span>
+              </div>
+            </div>
+          </div>
+          <div class="shelf-trophy">
+            <span>🏆</span>
+            <div>
+              <strong>Trophy on shelf:</strong> Best Developer Award — 2023 Hackathon Winner
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FRAME / GENERATIVE ART OVERLAY -->
+      <div id="frame-overlay" class="panel hidden">
+        <div class="panel-inner frame-panel">
+          <button class="panel-close" data-target="frame-overlay">✕</button>
+          <div class="art-header">
+            <div>
+              <h2 class="panel-title">🎨 Generative Art Studio</h2>
+              <p class="panel-subtitle">Every render is unique — powered by algorithmic noise</p>
+            </div>
+            <div class="art-controls">
+              <button id="art-mode-flow" class="art-mode-btn active" data-mode="flow">Flow Field</button>
+              <button id="art-mode-geo" class="art-mode-btn" data-mode="geo">Geometry</button>
+              <button id="art-mode-wave" class="art-mode-btn" data-mode="wave">Wave</button>
+            </div>
+          </div>
+          <div class="art-canvas-wrap">
+            <canvas id="art-canvas" width="560" height="280"></canvas>
+            <div class="art-overlay-label" id="art-algo-label">Flow Field · Perlin Noise</div>
+          </div>
+          <div class="art-footer">
+            <div class="art-stats">
+              <div class="art-stat"><span id="art-particles">—</span><small>Particles</small></div>
+              <div class="art-stat"><span id="art-seed">—</span><small>Seed</small></div>
+              <div class="art-stat"><span id="art-palette">—</span><small>Palette</small></div>
+            </div>
+            <button id="regenerate-art" class="action-btn">↺ New Render</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading Screen -->
       <div id="loading-container">
         <div class="loader"></div>
         <span class="loader-text">L O A D I N G</span>

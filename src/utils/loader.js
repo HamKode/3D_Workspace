@@ -1,11 +1,6 @@
 export const hideLoader = () => {
-  // Hide loader
   const loadingContainer = document.getElementById('loading-container')
-  loadingContainer?.remove()
-
-  // Show panel
-  const panel = document.getElementById('panel-controls')
-  if (panel) {
-    panel.style.display = 'block'
-  }
+  if (!loadingContainer) return
+  loadingContainer.classList.add('fade-out')
+  setTimeout(() => loadingContainer.remove(), 750)
 }
