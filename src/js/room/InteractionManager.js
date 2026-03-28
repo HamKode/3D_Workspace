@@ -1,13 +1,15 @@
 import * as THREE from 'three'
 
 export class InteractionManager {
-  constructor({ camera, renderer, scene, lampLight, lampGroup, onCameraFocus }) {
+  constructor({ camera, renderer, scene, lampLight, lampGroup, onCameraFocus, isInspectMode = () => false, shouldBlockClick = () => false }) {
     this.camera       = camera
     this.renderer     = renderer
     this.scene        = scene
     this.lampLight    = lampLight
     this.lampGroup    = lampGroup
     this.onCameraFocus = onCameraFocus
+    this.isInspectMode = isInspectMode
+    this.shouldBlockClick = shouldBlockClick
 
     this.raycaster    = new THREE.Raycaster()
     this.mouse        = new THREE.Vector2(-9999, -9999)
@@ -75,6 +77,7 @@ export class InteractionManager {
   }
 
   _onClick() {
+    if (this.isInspectMode() || this.shouldBlockClick()) return
     // Don't fire clicks when a panel is open
     if (document.querySelector('.panel:not(.hidden)')) return
     const hit = this._raycast()
@@ -144,8 +147,8 @@ export class InteractionManager {
   // ── Camera focus (chair / desk) ───────────────────────────────────────────
   _focusCamera(target) {
     const targets = {
-      chair: { pos: new THREE.Vector3(0, 20, 0),  look: new THREE.Vector3(0, 10, -19) },
-      desk:  { pos: new THREE.Vector3(0, 22, -8), look: new THREE.Vector3(0, 9,  -22) },
+      chair: { pos: new THREE.Vector3(-1.8, 18.4, -2.8), look: new THREE.Vector3(0, 8.1, -10.8) },
+      desk:  { pos: new THREE.Vector3(3.2, 19.2, -11.4), look: new THREE.Vector3(0.6, 9.4, -19.6) },
     }
     const t = targets[target]
     if (!t) return
@@ -328,6 +331,12 @@ export class InteractionManager {
 
   // ── Per-frame update (tooltip + hover cursor) ─────────────────────────────
   update() {
+    if (this.isInspectMode()) {
+      this._tooltip.classList.add('hidden')
+      document.body.style.cursor = 'grab'
+      return
+    }
+
     // Don't show tooltip when a panel is open
     if (document.querySelector('.panel:not(.hidden)')) {
       this._tooltip.classList.add('hidden')

@@ -5,8 +5,17 @@ class ThirdPersonCamera {
     this.target = params.target
     this.camera = params.camera
 
-    this.currentPosition = new THREE.Vector3()
-    this.currentLookat = new THREE.Vector3()
+    this.roomBounds = {
+      minX: -22,
+      maxX: 22,
+      minY: 9,
+      maxY: 24,
+      minZ: -4,
+      maxZ: 16,
+    }
+
+    this.currentPosition = this.camera.position.clone()
+    this.currentLookat = new THREE.Vector3(0, 9, -18)
   }
 
   calculateIdealOffset(x, y, z) {
@@ -23,6 +32,13 @@ class ThirdPersonCamera {
     return idealLookat
   }
 
+  clampToRoom(vector) {
+    vector.x = THREE.MathUtils.clamp(vector.x, this.roomBounds.minX, this.roomBounds.maxX)
+    vector.y = THREE.MathUtils.clamp(vector.y, this.roomBounds.minY, this.roomBounds.maxY)
+    vector.z = THREE.MathUtils.clamp(vector.z, this.roomBounds.minZ, this.roomBounds.maxZ)
+    return vector
+  }
+
   /**
    * Update camera position
    *
@@ -32,10 +48,10 @@ class ThirdPersonCamera {
     if (freeCamera) {
       this.camera.lookAt(this.target.position)
     } else {
-      const idealOffset = this.calculateIdealOffset(-15, 20, -30)
-      const idealLookat = this.calculateIdealLookat(0, 10, 50)
+      const idealOffset = this.clampToRoom(this.calculateIdealOffset(0, 16, 15))
+      const idealLookat = this.calculateIdealLookat(0, 8, -20)
 
-      const a = 1.0 - Math.pow(0.001, time)
+      const a = 1.0 - Math.pow(0.0001, time)
 
       this.currentPosition.lerp(idealOffset, a)
       this.currentLookat.lerp(idealLookat, a)

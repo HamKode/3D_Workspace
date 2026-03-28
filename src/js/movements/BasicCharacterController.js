@@ -37,9 +37,17 @@ class BasicCharacterController {
         child.castShadow = true
       })
 
-      this.target = fbx
+      const modelRoot = new THREE.Group()
+      modelRoot.position.set(0, 0, 0)
 
-      this.params.scene.add(fbx)
+      // The FBX asset faces the camera by default, so rotate only the visual mesh
+      // inside a stable movement root to keep controls and facing aligned.
+      fbx.rotation.y = Math.PI
+      modelRoot.add(fbx)
+
+      this.target = modelRoot
+
+      this.params.scene.add(modelRoot)
 
       this.mixer = new THREE.AnimationMixer(fbx)
 
@@ -139,7 +147,7 @@ class BasicCharacterController {
     // const oldPosition = new THREE.Vector3()
     // oldPosition.copy(controlObject.position)
 
-    const forward = new THREE.Vector3(0, 0, 1)
+    const forward = new THREE.Vector3(0, 0, -1)
     forward.applyQuaternion(controlObject.quaternion)
     forward.normalize()
 

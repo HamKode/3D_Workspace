@@ -13,9 +13,9 @@ function mkMesh(geo, material, castShadow = true, receiveShadow = false) {
 
 export function buildRoom(scene) {
   const W = 60, H = 28, D = 50
-  const wallMat  = mat(0xd4c5a9, { roughness: 0.95 })
-  const floorMat = mat(0x8b7355, { roughness: 0.9 })
-  const ceilMat  = mat(0xf0ebe0, { roughness: 1 })
+  const wallMat  = mat(0xd8cfbf, { roughness: 0.98 })
+  const floorMat = mat(0x6d5238, { roughness: 0.92, metalness: 0.02 })
+  const ceilMat  = mat(0xf5f1e8, { roughness: 1 })
 
   const floor = mkMesh(box(W, 0.5, D), floorMat, false, true)
   floor.position.set(0, 0, 0)
@@ -37,6 +37,18 @@ export function buildRoom(scene) {
   ceil.position.set(0, H, 0)
   scene.add(ceil)
 
+  const accentWall = mkMesh(box(W - 6, H - 6, 0.18), mat(0xc6baa5, { roughness: 1 }), false, true)
+  accentWall.position.set(0, H / 2, -D / 2 + 0.36)
+  scene.add(accentWall)
+
+  const rug = mkMesh(box(22, 0.12, 15), mat(0x2b3244, { roughness: 1 }), false, true)
+  rug.position.set(0, 0.32, -9)
+  scene.add(rug)
+
+  const rugInset = mkMesh(box(18, 0.05, 11), mat(0x7c8fa6, { roughness: 1 }), false, true)
+  rugInset.position.set(0, 0.41, -9)
+  scene.add(rugInset)
+
   // Skirting boards
   const skirtMat = mat(0x6b5a3e)
   const skirts = [
@@ -50,12 +62,26 @@ export function buildRoom(scene) {
     s.rotation.y = ry
     scene.add(s)
   })
+
+  const ceilingTrimMat = mat(0xe8dece, { roughness: 0.92 })
+  const trims = [
+    { pos: [0, H - 0.7, -D / 2 + 0.3], ry: 0, w: W },
+    { pos: [-W / 2 + 0.3, H - 0.7, 0], ry: Math.PI / 2, w: D },
+    { pos: [W / 2 - 0.3, H - 0.7, 0],  ry: Math.PI / 2, w: D },
+  ]
+  trims.forEach(({ pos, ry, w }) => {
+    const trim = mkMesh(box(w, 0.9, 0.28), ceilingTrimMat, false, false)
+    trim.position.set(...pos)
+    trim.rotation.y = ry
+    scene.add(trim)
+  })
 }
 
 export function buildDesk(scene) {
   const group = new THREE.Group()
-  const woodMat = mat(0x8b6914, { roughness: 0.7 })
-  const legMat  = mat(0x5a4010, { roughness: 0.6 })
+  const woodTone = 0x4A2C27
+  const woodMat = mat(woodTone, { roughness: 0.72 })
+  const legMat  = mat(0x39221f, { roughness: 0.64 })
 
   // Tabletop — wide desk against back wall
   const top = mkMesh(box(24, 0.8, 11), woodMat)
@@ -70,7 +96,7 @@ export function buildDesk(scene) {
   })
 
   // Drawer pedestal — right side under desk
-  const drawer = mkMesh(box(5, 7, 10), mat(0x7a5c10, { roughness: 0.8 }))
+  const drawer = mkMesh(box(5, 7, 10), mat(woodTone, { roughness: 0.82 }))
   drawer.position.set(9, 4, 0)
   group.add(drawer)
   // Drawer handle
@@ -189,16 +215,18 @@ export function buildChair(scene) {
   // Pulled out from desk, centered, facing the desk (rotated 180°)
   group.position.set(0, 0.25, -10)
   group.rotation.y = Math.PI
+  group.scale.set(0.82, 0.84, 0.72)
   scene.add(group)
   return group
 }
 
 export function buildShelf(scene) {
   const group = new THREE.Group()
-  const woodMat = mat(0x7a5c2e, { roughness: 0.8 })
+  const woodTone = 0x4A2C27
+  const woodMat = mat(woodTone, { roughness: 0.82 })
 
   // Back panel flush against right wall
-  const back = mkMesh(box(20, 18, 0.5), mat(0x6b4f22, { roughness: 0.9 }))
+  const back = mkMesh(box(20, 18, 0.5), mat(0x3c2421, { roughness: 0.9 }))
   back.position.set(0, 9, 0)
   group.add(back)
 
@@ -225,7 +253,7 @@ export function buildShelf(scene) {
   })
 
   // Middle shelf — small items: photo frame, small box
-  const photoFrame = mkMesh(box(3, 4, 0.3), mat(0x8b6914, { roughness: 0.7 }))
+  const photoFrame = mkMesh(box(3, 4, 0.3), mat(woodTone, { roughness: 0.75 }))
   photoFrame.position.set(-6, 10.5, 3.5)
   group.add(photoFrame)
   const photoCanvas = mkMesh(box(2.4, 3.2, 0.1), mat(0x87ceeb))

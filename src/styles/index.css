@@ -427,3 +427,15 @@ html, body {
   50%  { transform: translate(-50%,-50%) rotateY(180deg); }
   100% { transform: translate(-50%,-50%) rotateY(180deg) rotateX(180deg); }
 }
+
+@media (max-width: 900px) {
+  #controls-hint {
+    width: calc(100vw - 24px);
+    left: 12px;
+    transform: none;
+    justify-content: center;
+    flex-wrap: wrap;
+    bottom: 12px;
+    padding: 10px 14px;
+  }
+}
