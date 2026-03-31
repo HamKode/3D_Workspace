@@ -1,12 +1,13 @@
 import * as THREE from 'three'
 
 export class InteractionManager {
-  constructor({ camera, renderer, scene, lampLight, lampGroup, onCameraFocus, isInspectMode = () => false, shouldBlockClick = () => false }) {
+  constructor({ camera, renderer, scene, lampLight, lampGroup, frameGroups = [], onCameraFocus, isInspectMode = () => false, shouldBlockClick = () => false }) {
     this.camera       = camera
     this.renderer     = renderer
     this.scene        = scene
     this.lampLight    = lampLight
     this.lampGroup    = lampGroup
+    this.frameGroups  = frameGroups
     this.onCameraFocus = onCameraFocus
     this.isInspectMode = isInspectMode
     this.shouldBlockClick = shouldBlockClick
@@ -51,7 +52,8 @@ export class InteractionManager {
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') this._closeAllPanels()
     })
-  }
+    // Generate initial art
+    requestAnimationFrame(() => this._drawArt())  }
 
   register(meshOrGroup, id, label) {
     const meshes = []
@@ -315,6 +317,18 @@ export class InteractionManager {
     ctx.globalAlpha = 1
     document.getElementById('art-seed').textContent = '#' + seed.toString(16).toUpperCase().padStart(4, '0')
     document.getElementById('art-palette').textContent = paletteNames[seed % paletteNames.length]
+
+    // Update wall textures
+    const texture = new THREE.CanvasTexture(canvas)
+    this.frameGroups.forEach(group => {
+      // Find the canvas mesh (the one with white material)
+      group.children.forEach(child => {
+        if (child.material && child.material.color && child.material.color.getHex() === 0xfaf0e6) {
+          child.material.map = texture
+          child.material.needsUpdate = true
+        }
+      })
+    })
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────

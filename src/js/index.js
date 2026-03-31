@@ -227,6 +227,7 @@ class OfficeApp {
       scene:     this.scene,
       lampLight: this.lampLight,
       lampGroup: this.lampGroup,
+      frameGroups: [this.frameGroup],
       onCameraFocus: (pos, look) => {
         this._setInspectMode(false)
         this._focusPos.copy(pos)

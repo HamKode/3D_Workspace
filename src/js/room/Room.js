@@ -13,9 +13,9 @@ function mkMesh(geo, material, castShadow = true, receiveShadow = false) {
 
 export function buildRoom(scene) {
   const W = 60, H = 28, D = 50
-  const wallMat  = mat(0xd8cfbf, { roughness: 0.98 })
-  const floorMat = mat(0x6d5238, { roughness: 0.92, metalness: 0.02 })
-  const ceilMat  = mat(0xf5f1e8, { roughness: 1 })
+  const wallMat  = mat(0xF5F0E8, { roughness: 0.98 })  // Warm Off-White for realistic walls
+  const floorMat = mat(0xC8A878, { roughness: 0.92, metalness: 0.02 })  // Light Maple Wood for realistic floor
+  const ceilMat  = mat(0xFAFAF8, { roughness: 1 })  // Ceiling White, slightly lighter than walls
 
   const floor = mkMesh(box(W, 0.5, D), floorMat, false, true)
   floor.position.set(0, 0, 0)
@@ -29,6 +29,21 @@ export function buildRoom(scene) {
   leftWall.position.set(-W / 2, H / 2, 0)
   scene.add(leftWall)
 
+  // Window on left wall, opposite to desk
+  const windowFrame = mkMesh(box(0.6, 12, 8), mat(0x000000, { roughness: 0.5, metalness: 0.3 }))
+  windowFrame.position.set(-W / 2 + 0.3, 18, -19)
+  scene.add(windowFrame)
+  // Window bars
+  const vertBar = mkMesh(box(0.2, 11, 0.4), mat(0x515757, { roughness: 0.5, metalness: 0.3 }))
+  vertBar.position.set(-W / 2 + 0.7, 18, -19)
+  scene.add(vertBar)
+  const horizBar = mkMesh(box(0.2, 0.4, 7), mat(0x515757, { roughness: 0.5, metalness: 0.3 }))
+  horizBar.position.set(-W / 2 + 0.7, 18, -19)
+  scene.add(horizBar)
+  const windowGlass = mkMesh(box(0.05, 10.8, 6.8), mat(0xBBEDED, { roughness: 0.1, transparent: true, opacity: 0.7 }))
+  windowGlass.position.set(-W / 2 + 0.8, 18, -19)
+  scene.add(windowGlass)
+
   const rightWall = mkMesh(box(0.5, H, D), wallMat, false, true)
   rightWall.position.set(W / 2, H / 2, 0)
   scene.add(rightWall)
@@ -41,11 +56,11 @@ export function buildRoom(scene) {
   accentWall.position.set(0, H / 2, -D / 2 + 0.36)
   scene.add(accentWall)
 
-  const rug = mkMesh(box(22, 0.12, 15), mat(0x2b3244, { roughness: 1 }), false, true)
+  const rug = mkMesh(box(22, 0.12, 15), mat(0x6B7B8D, { roughness: 1 }), false, true)
   rug.position.set(0, 0.32, -9)
   scene.add(rug)
 
-  const rugInset = mkMesh(box(18, 0.05, 11), mat(0x7c8fa6, { roughness: 1 }), false, true)
+  const rugInset = mkMesh(box(18, 0.05, 11), mat(0x5A5A5A, { roughness: 1 }), false, true)
   rugInset.position.set(0, 0.41, -9)
   scene.add(rugInset)
 
@@ -63,7 +78,7 @@ export function buildRoom(scene) {
     scene.add(s)
   })
 
-  const ceilingTrimMat = mat(0xe8dece, { roughness: 0.92 })
+  const ceilingTrimMat = mat(0x15323B, { roughness: 0.92 })
   const trims = [
     { pos: [0, H - 0.7, -D / 2 + 0.3], ry: 0, w: W },
     { pos: [-W / 2 + 0.3, H - 0.7, 0], ry: Math.PI / 2, w: D },
@@ -79,9 +94,9 @@ export function buildRoom(scene) {
 
 export function buildDesk(scene) {
   const group = new THREE.Group()
-  const woodTone = 0x4A2C27
+  const woodTone = 0x4A2E1A  // Walnut wood for realistic office desk
   const woodMat = mat(woodTone, { roughness: 0.72 })
-  const legMat  = mat(0x39221f, { roughness: 0.64 })
+  const legMat  = mat(woodTone, { roughness: 0.64 })
 
   // Tabletop — wide desk against back wall
   const top = mkMesh(box(24, 0.8, 11), woodMat)
@@ -113,7 +128,11 @@ export function buildDesk(scene) {
 export function buildLaptop(scene) {
   const group = new THREE.Group()
   const bodyMat   = mat(0x2a2a2a, { roughness: 0.3, metalness: 0.7 })
-  const screenMat = mat(0x0a1628, { roughness: 0.1, emissive: 0x0a1628 })
+  
+  // Load Mac desktop texture
+  const textureLoader = new THREE.TextureLoader()
+  const desktopTexture = textureLoader.load('https://images.unsplash.com/photo-1541807084-5c52b6b3adef?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')
+  const screenMat = new THREE.MeshStandardMaterial({ map: desktopTexture, roughness: 0.1 })
 
   const base = mkMesh(box(7, 0.3, 5), bodyMat)
   group.add(base)
@@ -145,8 +164,12 @@ export function buildLaptop(scene) {
 
 export function buildMonitor(scene) {
   const group = new THREE.Group()
-  const frameMat  = mat(0x1c1c1c, { roughness: 0.4, metalness: 0.5 })
-  const screenMat = mat(0x050d1a, { roughness: 0.05, emissive: 0x0d2040, emissiveIntensity: 0.4 })
+  const frameMat  = mat(0x1C1C1E, { roughness: 1, metalness: 0 })  // Matte black Apple-style frame
+  
+  // Load Kali Linux wallpaper texture
+  const textureLoader = new THREE.TextureLoader()
+  const wallpaperTexture = textureLoader.load('https://www.kali.org/images/wallpapers/kali-linux-wallpaper-1920x1080.jpg')
+  const screenMat = new THREE.MeshStandardMaterial({ map: wallpaperTexture, roughness: 0.05 })
 
   const panel = mkMesh(box(14, 8, 0.4), frameMat)
   group.add(panel)
@@ -171,7 +194,7 @@ export function buildMonitor(scene) {
 
 export function buildChair(scene) {
   const group = new THREE.Group()
-  const fabricMat = mat(0x1a1a2e, { roughness: 0.9 })
+  const fabricMat = mat(0x1A1A1A, { roughness: 0.9 })  // Black leather for realistic office chair
   const metalMat  = mat(0x555555, { roughness: 0.3, metalness: 0.8 })
 
   const seat = mkMesh(box(8, 0.8, 8), fabricMat)
@@ -222,11 +245,11 @@ export function buildChair(scene) {
 
 export function buildShelf(scene) {
   const group = new THREE.Group()
-  const woodTone = 0x4A2C27
+  const woodTone = 0x3D1F0D  // Dark Mahogany for IKEA-style shelf
   const woodMat = mat(woodTone, { roughness: 0.82 })
 
   // Back panel flush against right wall
-  const back = mkMesh(box(20, 18, 0.5), mat(0x3c2421, { roughness: 0.9 }))
+  const back = mkMesh(box(20, 18, 0.5), mat(woodTone, { roughness: 0.9 }))
   back.position.set(0, 9, 0)
   group.add(back)
 
@@ -245,24 +268,55 @@ export function buildShelf(scene) {
   })
 
   // Books on bottom shelf
-  const bookColors = [0xe74c3c, 0x3498db, 0x2ecc71, 0xf39c12, 0x9b59b6, 0x1abc9c]
+  const bookColors = [0x1B2A4A, 0x6B1E1E, 0x1E3D2F, 0x2D2D2D, 0x1B2A4A, 0x6B1E1E]  // Realistic muted tones for books
   bookColors.forEach((c, i) => {
     const book = mkMesh(box(1.6, 5, 5), mat(c, { roughness: 0.9 }))
     book.position.set(-7.5 + i * 3, 4.8, 3.5)
     group.add(book)
   })
 
-  // Middle shelf — small items: photo frame, small box
+  // Middle shelf — photo frame with quote
   const photoFrame = mkMesh(box(3, 4, 0.3), mat(woodTone, { roughness: 0.75 }))
   photoFrame.position.set(-6, 10.5, 3.5)
   group.add(photoFrame)
-  const photoCanvas = mkMesh(box(2.4, 3.2, 0.1), mat(0x87ceeb))
+
+  // Create canvas for quote
+  const canvas = document.createElement('canvas')
+  canvas.width = 512
+  canvas.height = 512
+  const ctx = canvas.getContext('2d')
+  ctx.fillStyle = '#120E0E'
+  ctx.fillRect(0, 0, 512, 512)
+  ctx.fillStyle = '#f5f5f5'
+  ctx.font = 'bold 40px Arial'
+  ctx.textAlign = 'center'
+  ctx.fillText('"Code is Poetry"', 256, 200)
+  ctx.font = '24px Arial'
+  ctx.fillText('- Anonymous', 256, 250)
+  const quoteTexture = new THREE.CanvasTexture(canvas)
+  const photoCanvas = mkMesh(box(2.4, 3.2, 0.1), new THREE.MeshStandardMaterial({ map: quoteTexture }))
   photoCanvas.position.set(-6, 10.5, 3.7)
   group.add(photoCanvas)
 
-  const smallBox = mkMesh(box(3, 2.5, 3), mat(0x555577, { roughness: 0.8 }))
+  const smallBox = mkMesh(box(3, 2.5, 3), mat(0x8B4513, { roughness: 0.8 }))
   smallBox.position.set(5, 9.5, 3.5)
   group.add(smallBox)
+
+  // Add label to box
+  const boxCanvas = document.createElement('canvas')
+  boxCanvas.width = 256
+  boxCanvas.height = 256
+  const boxCtx = boxCanvas.getContext('2d')
+  boxCtx.fillStyle = '#ffffff'
+  boxCtx.fillRect(0, 0, 256, 256)
+  boxCtx.fillStyle = '#000000'
+  boxCtx.font = 'bold 20px Arial'
+  boxCtx.textAlign = 'center'
+  boxCtx.fillText('Original Box', 128, 128)
+  const boxTexture = new THREE.CanvasTexture(boxCanvas)
+  const boxLabel = mkMesh(box(2.8, 0.1, 2.8), new THREE.MeshStandardMaterial({ map: boxTexture }))
+  boxLabel.position.set(5, 10.3, 3.5)
+  group.add(boxLabel)
 
   // Top shelf — trophy + plant
   const trophyBase = mkMesh(box(2, 0.5, 2), mat(0xf1c40f))
@@ -272,11 +326,11 @@ export function buildShelf(scene) {
   trophyCup.position.set(-5, 17, 3.5)
   group.add(trophyCup)
 
-  const pot = mkMesh(cyl(1.2, 0.9, 2.5, 8), mat(0xc0392b, { roughness: 0.8 }))
+  const pot = mkMesh(cyl(1.2, 0.9, 2.5, 8), mat(0xF0EDE8, { roughness: 0.8 }))
   pot.position.set(6, 15.5, 3.5)
   group.add(pot)
-  const plant = mkMesh(new THREE.SphereGeometry(2.2, 8, 6), mat(0x27ae60, { roughness: 1 }))
-  plant.position.set(6, 18, 3.5)
+  const plant = mkMesh(new THREE.ConeGeometry(1.5, 4, 8), mat(0x2D5016, { roughness: 1 }))
+  plant.position.set(6, 19, 3.5)
   group.add(plant)
 
   // Mounted on right wall — rotated 90° to face inward
@@ -288,7 +342,7 @@ export function buildShelf(scene) {
 
 export function buildLamp(scene) {
   const group = new THREE.Group()
-  const metalMat = mat(0x888888, { roughness: 0.3, metalness: 0.8 })
+  const metalMat = mat(0x2B2B2B, { roughness: 0.3, metalness: 0.8 })  // Matte Black for desk lamp
   const shadeMat = mat(0xf5e6c8, { roughness: 0.9, side: THREE.DoubleSide })
 
   const base = mkMesh(cyl(1.5, 2, 1, 16), metalMat)
@@ -310,6 +364,7 @@ export function buildLamp(scene) {
 
   // Right corner of desk
   group.position.set(10, 9.05, -20)
+  group.scale.set(0.4, 0.4, 0.4)  // Scale down to make it more realistic desk lamp size
   scene.add(group)
   group.userData.bulb = bulb
   group.userData.bulbMat = bulbMat
@@ -317,9 +372,9 @@ export function buildLamp(scene) {
   return group
 }
 
-export function buildWallFrame(scene) {
+export function buildWallFrame(scene, x = -14, y = 20, z = -24.6, ry = 0) {
   const group = new THREE.Group()
-  const frameMat = mat(0x3d2b1f, { roughness: 0.7 })
+  const frameMat = mat(0x210E13, { roughness: 0.7 })
 
   const outerFrame = mkMesh(box(14, 10, 0.4), frameMat)
   group.add(outerFrame)
@@ -328,28 +383,16 @@ export function buildWallFrame(scene) {
   canvas.position.z = 0.2
   group.add(canvas)
 
-  const artColors = [0xe74c3c, 0x3498db, 0xf39c12, 0x2ecc71]
-  const artRects = [
-    { pos: [-2.5, 1.5, 0.31], size: [4, 4, 0.05] },
-    { pos: [2.5, -1, 0.31],   size: [5, 3, 0.05] },
-    { pos: [-2, -2, 0.31],    size: [3, 2, 0.05] },
-    { pos: [3, 2.5, 0.31],    size: [2.5, 2.5, 0.05] },
-  ]
-  artRects.forEach(({ pos, size }, i) => {
-    const rect = mkMesh(box(...size), mat(artColors[i], { roughness: 0.8 }))
-    rect.position.set(...pos)
-    group.add(rect)
-  })
-
-  // Back wall, left of monitor — art frame
-  group.position.set(-14, 20, -24.6)
+  // Position and rotation
+  group.position.set(x, y, z)
+  group.rotation.y = ry
   scene.add(group)
   return group
 }
 
 export function buildKeyboard(scene) {
   const group = new THREE.Group()
-  const bodyMat = mat(0x2c2c2c, { roughness: 0.5 })
+  const bodyMat = mat(0x0C1821, { roughness: 0.5 })
   const keyMat  = mat(0x1a1a1a, { roughness: 0.6 })
 
   group.add(mkMesh(box(9, 0.4, 3.5), bodyMat))
@@ -372,7 +415,7 @@ export function buildKeyboard(scene) {
 export function buildMouse(scene) {
   const group = new THREE.Group()
   const body = mkMesh(new THREE.SphereGeometry(0.9, 8, 6),
-    mat(0x222222, { roughness: 0.4, metalness: 0.3 }))
+    mat(0x0C1821, { roughness: 0.4, metalness: 0.3 }))
   body.scale.set(1, 0.55, 1.4)
   group.add(body)
   // Right of keyboard on desk
@@ -384,7 +427,7 @@ export function buildMouse(scene) {
 export function buildFloorPlant(scene) {
   const group = new THREE.Group()
   // Pot
-  const pot = mkMesh(cyl(2.5, 2, 5, 12), mat(0x8b4513, { roughness: 0.9 }))
+  const pot = mkMesh(cyl(2.5, 2, 5, 12), mat(0xF0EDE8, { roughness: 0.9 }))
   pot.position.set(0, 2.5, 0)
   group.add(pot)
   // Soil top
@@ -392,13 +435,13 @@ export function buildFloorPlant(scene) {
   soil.position.set(0, 5.2, 0)
   group.add(soil)
   // Main bush
-  const bush = mkMesh(new THREE.SphereGeometry(4, 10, 8), mat(0x2d8a4e, { roughness: 1 }))
-  bush.position.set(0, 10, 0)
+  const bush = mkMesh(new THREE.ConeGeometry(3, 6, 10), mat(0x2D5016, { roughness: 1 }))
+  bush.position.set(0, 11, 0)
   bush.scale.set(1, 1.1, 1)
   group.add(bush)
-  // Smaller accent spheres
-  ;[[-2.5, 8.5, 1.5], [2, 9, -1.5], [0, 12.5, 1], [-1.5, 11, -2]].forEach(([x, y, z]) => {
-    const leaf = mkMesh(new THREE.SphereGeometry(2.2, 8, 6), mat(0x27ae60, { roughness: 1 }))
+  // Smaller accent cones
+  ;[[-2.5, 9.5, 1.5], [2, 10, -1.5], [0, 13.5, 1], [-1.5, 12, -2]].forEach(([x, y, z]) => {
+    const leaf = mkMesh(new THREE.ConeGeometry(1.5, 3, 8), mat(0x4A7C23, { roughness: 1 }))
     leaf.position.set(x, y, z)
     group.add(leaf)
   })
