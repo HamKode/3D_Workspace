@@ -30,7 +30,7 @@ export function buildRoom(scene) {
   scene.add(leftWall)
 
   // Window on left wall, opposite to desk
-  const windowFrame = mkMesh(box(0.6, 12, 8), mat(0x000000, { roughness: 0.5, metalness: 0.3 }))
+  const windowFrame = mkMesh(box(0.6, 12, 8), mat(0x3D1F0D, { roughness: 0.5, metalness: 0.3 }))
   windowFrame.position.set(-W / 2 + 0.3, 18, -19)
   scene.add(windowFrame)
   // Window bars
@@ -329,6 +329,13 @@ export function buildShelf(scene) {
   const pot = mkMesh(cyl(1.2, 0.9, 2.5, 8), mat(0xF0EDE8, { roughness: 0.8 }))
   pot.position.set(6, 15.5, 3.5)
   group.add(pot)
+  // Pot borders
+  const lowerBorder = mkMesh(cyl(1.25, 1.25, 0.1, 8), mat(0x8B4513, { roughness: 0.8 }))
+  lowerBorder.position.set(6, 14.3, 3.5)
+  group.add(lowerBorder)
+  const upperBorder = mkMesh(cyl(1.25, 1.25, 0.1, 8), mat(0x8B4513, { roughness: 0.8 }))
+  upperBorder.position.set(6, 16.7, 3.5)
+  group.add(upperBorder)
   const plant = mkMesh(new THREE.ConeGeometry(1.5, 4, 8), mat(0x2D5016, { roughness: 1 }))
   plant.position.set(6, 19, 3.5)
   group.add(plant)
@@ -445,10 +452,96 @@ export function buildFloorPlant(scene) {
     leaf.position.set(x, y, z)
     group.add(leaf)
   })
-  // Left front corner — pulled away from wall to avoid clipping
-  group.position.set(-22, 0.25, 6)
+  // Left side near desk, under window
+  group.position.set(-25, 0.25, -19)
   scene.add(group)
   return group
+}
+
+export function buildTrashBin(scene) {
+  const group = new THREE.Group()
+  const binMat = mat(0x595f66, { roughness: 0.7, metalness: 0.35 })
+  const rimMat = mat(0xc6ccd2, { roughness: 0.35, metalness: 0.75 })
+  const trashMat = mat(0x1f2327, { roughness: 1 })
+
+  const binBody = mkMesh(new THREE.CylinderGeometry(1.4, 1.1, 3.2, 20, 1, true), binMat)
+  binBody.position.y = 1.6
+  group.add(binBody)
+
+  const rim = mkMesh(new THREE.TorusGeometry(1.42, 0.12, 10, 24), rimMat)
+  rim.position.y = 3.15
+  rim.rotation.x = Math.PI / 2
+  group.add(rim)
+
+  const base = mkMesh(new THREE.CylinderGeometry(1.02, 1.08, 0.22, 20), binMat)
+  base.position.y = 0.11
+  group.add(base)
+
+  const trashPieces = [
+    { geo: box(0.7, 0.55, 0.7), pos: [-0.3, 2.45, 0.15], rot: [0.2, -0.4, 0.1], scale: [1, 1, 1] },
+    { geo: box(0.9, 0.35, 0.55), pos: [0.35, 2.2, -0.1], rot: [-0.1, 0.5, -0.2], scale: [1, 1, 1] },
+    { geo: new THREE.SphereGeometry(0.35, 8, 8), pos: [0.05, 2.75, -0.35], rot: [0, 0, 0], scale: [1.2, 0.7, 1] },
+  ]
+
+  trashPieces.forEach(({ geo, pos, rot, scale }) => {
+    const piece = mkMesh(geo, trashMat, false, false)
+    piece.position.set(...pos)
+    piece.rotation.set(...rot)
+    piece.scale.set(...scale)
+    group.add(piece)
+  })
+
+  // Small floor bin beside the bookshelf
+  group.position.set(27.2, 0.25, -3.5)
+  scene.add(group)
+  return group
+}
+
+export function buildSofa(scene) {
+  const fabricMat = mat(0x1A1A1A, { roughness: 0.9 })  // Black leather like chair
+  const woodMat = mat(0x3D1F0D, { roughness: 0.7 })  // Matching bookshelf
+  const createSofa = () => {
+    const group = new THREE.Group()
+
+    // Seat
+    const seat = mkMesh(box(10, 1, 6), fabricMat)
+    seat.position.set(0, 2, 0)
+    group.add(seat)
+
+    // Back
+    const back = mkMesh(box(10, 8, 1), fabricMat)
+    back.position.set(0, 6, -2.5)
+    group.add(back)
+
+    // Left arm
+    const leftArm = mkMesh(box(1, 6, 6), fabricMat)
+    leftArm.position.set(-4.5, 5, 0)
+    group.add(leftArm)
+
+    // Right arm
+    const rightArm = mkMesh(box(1, 6, 6), fabricMat)
+    rightArm.position.set(4.5, 5, 0)
+    group.add(rightArm)
+
+    // Legs
+    ;[[-4, 0.5, -2.5], [4, 0.5, -2.5], [-4, 0.5, 2.5], [4, 0.5, 2.5]].forEach(([x, y, z]) => {
+      const leg = mkMesh(box(0.5, 1, 0.5), woodMat)
+      leg.position.set(x, y, z)
+      group.add(leg)
+    })
+
+    group.rotation.y = Math.PI / 2  // Face the room
+    scene.add(group)
+    return group
+  }
+
+  const leftSofa = createSofa()
+  leftSofa.position.set(-27, 0, 0)
+
+  const rightSofa = createSofa()
+  rightSofa.position.set(-27, 0, 11)
+
+  return leftSofa
 }
 
 export function buildCeilingLight(scene) {

@@ -6,7 +6,7 @@ import ThirdPersonCamera        from './cameras/ThirdPersonCamera'
 import {
   buildRoom, buildDesk, buildLaptop, buildMonitor,
   buildChair, buildShelf, buildLamp, buildWallFrame,
-  buildKeyboard, buildMouse, buildCeilingLight, buildFloorPlant,
+  buildKeyboard, buildMouse, buildCeilingLight, buildFloorPlant, buildSofa, buildTrashBin,
 } from './room/Room'
 import { InteractionManager } from './room/InteractionManager'
 
@@ -96,6 +96,8 @@ class OfficeApp {
     buildKeyboard(this.scene)
     buildMouse(this.scene)
     buildFloorPlant(this.scene)
+    buildSofa(this.scene)
+    buildTrashBin(this.scene)
   }
 
   _initCharacter() {
