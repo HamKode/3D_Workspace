@@ -1,4 +1,4 @@
-import * as THREE from 'three'
+﻿import * as THREE from 'three'
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 
 import CharacterFSM from '../fsm/CharacterFSM'
@@ -559,3 +559,4 @@ class BasicCharacterController {
 }
 
 export default BasicCharacterController
+

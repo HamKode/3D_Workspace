@@ -402,18 +402,17 @@ export function buildKeyboard(scene) {
   const bodyMat = mat(0x0C1821, { roughness: 0.5 })
   const keyMat  = mat(0x1a1a1a, { roughness: 0.6 })
 
-  group.add(mkMesh(box(9, 0.4, 3.5), bodyMat))
+  group.add(mkMesh(box(5.5, 0.25, 2.2), bodyMat))
 
   for (let r = 0; r < 4; r++) {
     for (let c = 0; c < 12; c++) {
-      const key = mkMesh(box(0.55, 0.15, 0.5), keyMat)
-      key.position.set(-3.5 + c * 0.65, 0.28, -1.2 + r * 0.7)
+      const key = mkMesh(box(0.32, 0.10, 0.30), keyMat)
+      key.position.set(-2.2 + c * 0.40, 0.18, -0.75 + r * 0.44)
       group.add(key)
     }
   }
 
-  // Front-center of desk, slight angle
-  group.position.set(0, 9.25, -17)
+  group.position.set(-0.87, 9.28, -14.7)
   group.rotation.y = 0
   scene.add(group)
   return group
@@ -421,12 +420,11 @@ export function buildKeyboard(scene) {
 
 export function buildMouse(scene) {
   const group = new THREE.Group()
-  const body = mkMesh(new THREE.SphereGeometry(0.9, 8, 6),
+  const body = mkMesh(new THREE.SphereGeometry(0.55, 8, 6),
     mat(0x0C1821, { roughness: 0.4, metalness: 0.3 }))
   body.scale.set(1, 0.55, 1.4)
   group.add(body)
-  // Right of keyboard on desk
-  group.position.set(6, 9.15, -17)
+  group.position.set(3.7, 9.22, -14.4)
   scene.add(group)
   return group
 }
