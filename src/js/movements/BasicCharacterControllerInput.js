@@ -10,6 +10,7 @@ class BasicCharacterControllerInput {
       right: false,
       space: false,
       shift: false,
+      interact: false,
     }
 
     document.addEventListener(
@@ -41,6 +42,9 @@ class BasicCharacterControllerInput {
       case 16: // SHIFT
         this.keys.shift = true
         break
+      case 69: // E
+        this.keys.interact = true
+        break
     }
   }
 
@@ -63,6 +67,9 @@ class BasicCharacterControllerInput {
         break
       case 16: // SHIFT
         this.keys.shift = false
+        break
+      case 69: // E
+        this.keys.interact = false
         break
     }
   }

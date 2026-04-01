@@ -155,6 +155,18 @@ class OfficeApp {
     this._inspectLast = new THREE.Vector2()
     this._blockSceneClickUntil = 0
 
+    // Seated orbit camera state
+    this._seatedOrbit = {
+      active: false,
+      target: new THREE.Vector3(0, 10, -10.55),
+      radius: 18,
+      theta: 0,
+      phi: 1.0,
+      dragging: false,
+      pointerDown: false,
+      last: new THREE.Vector2(),
+    }
+
     const dom = this.renderer.domElement
     dom.addEventListener('mousedown', this._onInspectPointerDown.bind(this))
     dom.addEventListener('mousemove', this._onInspectPointerMove.bind(this))
@@ -184,8 +196,28 @@ class OfficeApp {
     this.camera.lookAt(this._inspectTarget)
   }
 
+  _applySeatedOrbitCamera() {
+    const o = this._seatedOrbit
+    const sinPhiRadius = Math.sin(o.phi) * o.radius
+    this.camera.position.set(
+      o.target.x + sinPhiRadius * Math.sin(o.theta),
+      o.target.y + Math.cos(o.phi) * o.radius,
+      o.target.z + sinPhiRadius * Math.cos(o.theta)
+    )
+    this.camera.lookAt(o.target)
+  }
+
   _onInspectPointerDown(e) {
     if (e.button !== 0 || document.querySelector('.panel:not(.hidden)')) return
+
+    // If seated, start seated orbit drag
+    if (this.controls?.isSeated()) {
+      this._seatedOrbit.pointerDown = true
+      this._seatedOrbit.dragging = false
+      this._seatedOrbit.last.set(e.clientX, e.clientY)
+      return
+    }
+
     this._inspectPointerDown = true
     this._inspectDragging = false
     this._inspectStart.set(e.clientX, e.clientY)
@@ -193,7 +225,29 @@ class OfficeApp {
   }
 
   _onInspectPointerMove(e) {
-    if (!this._inspectPointerDown || document.querySelector('.panel:not(.hidden)')) return
+    if (document.querySelector('.panel:not(.hidden)')) return
+
+    // Seated orbit drag
+    if (this._seatedOrbit.pointerDown && this.controls?.isSeated()) {
+      const deltaX = e.clientX - this._seatedOrbit.last.x
+      const deltaY = e.clientY - this._seatedOrbit.last.y
+      this._seatedOrbit.last.set(e.clientX, e.clientY)
+
+      if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+        this._seatedOrbit.dragging = true
+        this._blockSceneClickUntil = performance.now() + 220
+      }
+
+      this._seatedOrbit.theta -= deltaX * 0.008
+      this._seatedOrbit.phi = THREE.MathUtils.clamp(
+        this._seatedOrbit.phi + deltaY * 0.008, 0.3, 1.4
+      )
+      this._seatedOrbit.active = true
+      document.body.style.cursor = 'grabbing'
+      return
+    }
+
+    if (!this._inspectPointerDown) return
 
     const moveX = e.clientX - this._inspectStart.x
     const moveY = e.clientY - this._inspectStart.y
@@ -218,13 +272,30 @@ class OfficeApp {
   }
 
   _onInspectPointerUp() {
+    this._seatedOrbit.pointerDown = false
     this._inspectPointerDown = false
-    document.body.style.cursor = this._inspectMode ? 'grab' : 'default'
-    requestAnimationFrame(() => { this._inspectDragging = false })
+    const isSeated = this.controls?.isSeated()
+    document.body.style.cursor = (this._inspectMode || isSeated) ? 'grab' : 'default'
+    requestAnimationFrame(() => {
+      this._inspectDragging = false
+      this._seatedOrbit.dragging = false
+    })
   }
 
   _onInspectWheel(e) {
-    if (!this._inspectMode || document.querySelector('.panel:not(.hidden)')) return
+    if (document.querySelector('.panel:not(.hidden)')) return
+
+    // Seated orbit zoom
+    if (this.controls?.isSeated()) {
+      e.preventDefault()
+      this._seatedOrbit.radius = THREE.MathUtils.clamp(
+        this._seatedOrbit.radius + e.deltaY * 0.02, 8, 35
+      )
+      this._seatedOrbit.active = true
+      return
+    }
+
+    if (!this._inspectMode) return
     e.preventDefault()
     this._inspectRadius = THREE.MathUtils.clamp(this._inspectRadius + e.deltaY * 0.02, 16, 58)
     this._applyInspectCamera()
@@ -238,9 +309,34 @@ class OfficeApp {
       lampLight: this.lampLight,
       lampGroup: this.lampGroup,
       frameGroups: [this.frameGroup],
-      onChairInteract: () => this.controls?.toggleSit(),
-      onSofaInteract: (seatIndex) => this.controls?.toggleSit(`sofa${seatIndex}`),
+      onChairInteract: () => {
+        const result = this.controls?.toggleSit()
+        if (result === 'sit') {
+          this._seatedOrbit.target.set(0, 10, -10.55)
+          this._seatedOrbit.theta = 0
+          this._seatedOrbit.phi = 1.0
+          this._seatedOrbit.radius = 18
+          this._seatedOrbit.active = true
+          this._clearFocus()
+        }
+        return result
+      },
+      onSofaInteract: (seatIndex) => {
+        const result = this.controls?.toggleSit(`sofa${seatIndex}`)
+        if (result === 'sit') {
+          const sofaZ = seatIndex === 0 ? 0.3 : 11.3
+          this._seatedOrbit.target.set(-26.2, 8, sofaZ)
+          // Camera samne se aaye: sofa -X wall pe hai, camera +X side se
+          this._seatedOrbit.theta = Math.PI / 2
+          this._seatedOrbit.phi = 1.1
+          this._seatedOrbit.radius = 20
+          this._seatedOrbit.active = true
+          this._clearFocus()
+        }
+        return result
+      },
       onDeskToolInteract: (tool) => this.controls?.useDesk(tool),
+      getActiveSeat: () => this.controls?.activeSeat ?? null,
       onCameraReset: () => this._clearFocus(),
       onCameraFocus: ({ pos, look, fov = this._defaultFov, positionLerp = 0.05, lookLerp = 0.05 }) => {
         this._setInspectMode(false)
@@ -254,7 +350,6 @@ class OfficeApp {
       },
       isInspectMode: () => this._inspectMode,
       shouldBlockClick: () => performance.now() < this._blockSceneClickUntil,
-      // camera focus targets updated for new layout
     })
 
     this.interactions.register(this.lampGroup,    'lamp',    '💡 Click to toggle lamp on/off')
@@ -295,15 +390,26 @@ class OfficeApp {
     const deltaTime = elapsed - this.prevTime
     this.prevTime   = elapsed
 
-    // Subtle monitor glow pulse
     this.monitorGlow.intensity = 0.5 + Math.sin(elapsed * 1.2) * 0.15
 
     this.controls?.update(deltaTime)
 
+    const isSeated = this.controls?.isSeated()
+
+    // Reset seated orbit when character stands up
+    if (!isSeated && this._seatedOrbit.active) {
+      this._seatedOrbit.active = false
+    }
+
     if (this._inspectMode) {
       this.camera.lookAt(this._inspectTarget)
+    } else if (isSeated && this._seatedOrbit.active) {
+      // Seated mouse-orbit camera
+      this._applySeatedOrbitCamera()
+    } else if (isSeated) {
+      // Default seated camera: snap to focus if not orbiting yet
+      this._applySeatedOrbitCamera()
     } else if (this._focusActive) {
-      // Smooth camera lerp to focus position
       this.camera.position.lerp(this._focusPos, this._focusPositionLerp)
       this._focusLookCur.lerp(this._focusLook, this._focusLookLerp)
       this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, this._focusFov, 0.08)

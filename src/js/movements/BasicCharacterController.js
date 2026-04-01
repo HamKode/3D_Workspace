@@ -29,6 +29,27 @@ class BasicCharacterController {
     this._animatedBoneRotations = new Map()
     this._clock = 0
 
+    // Mouse delta for hand-follow feature
+    this._mouseDeltaX = 0
+    this._mouseDeltaY = 0
+    this._mouseSmoothedX = 0
+    this._mouseSmoothedY = 0
+
+    // E key edge-detection
+    this._prevInteractKey = false
+
+    window.addEventListener('mousemove', (e) => {
+      if (this._interaction.mode === 'mouse') {
+        this._mouseDeltaX = THREE.MathUtils.clamp(e.movementX * 0.01, -0.6, 0.6)
+        this._mouseDeltaY = THREE.MathUtils.clamp(e.movementY * 0.01, -0.4, 0.4)
+      }
+    })
+
+    // Debug: press P to log arm bones in current pose
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'p' || e.key === 'P') this.debugLogArmBones()
+    })
+
     this._interaction = {
       mode: 'free',
       seat: 'chair',
@@ -77,7 +98,6 @@ class BasicCharacterController {
       const modelRoot = new THREE.Group()
       modelRoot.position.set(0, 0, 0)
 
-      // Keep a stable motion root while the visual mesh faces the room correctly.
       fbx.rotation.y = Math.PI
       modelRoot.add(fbx)
 
@@ -119,11 +139,15 @@ class BasicCharacterController {
     if (!this.target) return
 
     this._clock += time
+    console.log('update running, mode:', this._interaction.mode)
 
     const isInteractive = this._interaction.mode !== 'free'
     if (isInteractive && this.stateMachine.currentState?.name !== 'idle') {
       this.stateMachine.setState('idle')
     }
+
+    // E key: sit/stand toggle
+    this._handleInteractKey()
 
     if (!isInteractive) {
       this.stateMachine.update(time, this.input)
@@ -132,9 +156,27 @@ class BasicCharacterController {
       this.velocity.set(0, 0, 0)
     }
 
+    // Smooth mouse delta decay
+    this._mouseSmoothedX = THREE.MathUtils.lerp(this._mouseSmoothedX, this._mouseDeltaX, 0.12)
+    this._mouseSmoothedY = THREE.MathUtils.lerp(this._mouseSmoothedY, this._mouseDeltaY, 0.12)
+    this._mouseDeltaX = THREE.MathUtils.lerp(this._mouseDeltaX, 0, 0.08)
+    this._mouseDeltaY = THREE.MathUtils.lerp(this._mouseDeltaY, 0, 0.08)
+
     this.mixer?.update(time)
     this._updateInteractionState(time)
     this._position.copy(this.target.position)
+  }
+
+  _handleInteractKey() {
+    const pressed = this.input.keys.interact
+    if (pressed && !this._prevInteractKey) {
+      if (this._interaction.mode === 'free') {
+        this.sitOnSeat('chair')
+      } else {
+        this.standUp()
+      }
+    }
+    this._prevInteractKey = pressed
   }
 
   _applyFreeMovement(time) {
@@ -233,6 +275,21 @@ class BasicCharacterController {
       })
       this._boneBaseRotations.set(child.uuid, child.quaternion.clone())
     })
+
+    // Debug: log all matched bones
+    console.log('[Bones matched]', Object.fromEntries(
+      Object.entries(this.bones).map(([k, b]) => [k, b.name])
+    ))
+  }
+
+  debugLogArmBones() {
+    const keys = ['leftShoulder','rightShoulder','leftArm','rightArm','leftForeArm','rightForeArm','leftHand','rightHand']
+    keys.forEach((k) => {
+      const b = this.bones[k]
+      if (!b) { console.log(k, 'NOT FOUND'); return }
+      const e = new THREE.Euler().setFromQuaternion(b.quaternion.clone(), 'XYZ')
+      console.log(k, b.name, `x:${e.x.toFixed(3)} y:${e.y.toFixed(3)} z:${e.z.toFixed(3)}`)
+    })
   }
 
   _updateInteractionState(time) {
@@ -255,6 +312,13 @@ class BasicCharacterController {
 
     if (this._interaction.mode === 'free') {
       return
+    }
+
+    // One-time debug log when mode changes
+    if (this._interaction.mode !== this._lastLoggedMode) {
+      this._lastLoggedMode = this._interaction.mode
+      console.log('MODE:', this._interaction.mode)
+      this.debugLogArmBones()
     }
 
     this._resetPoseToAnimation()
@@ -304,12 +368,12 @@ class BasicCharacterController {
       rightLeg: [1.52, 0, 0],
       leftFoot: [-0.18, 0, 0],
       rightFoot: [-0.18, 0, 0],
-      leftShoulder: [0.03, 0.08, 0.03],
-      rightShoulder: [0.03, -0.08, -0.03],
-      leftArm: [0.2, 0.15, -0.08],
-      rightArm: [0.2, -0.15, 0.08],
-      leftForeArm: [-0.35, 0.03, -0.04],
-      rightForeArm: [-0.35, -0.03, 0.04],
+      leftShoulder:  [0.02,  -0.19, -0.23],
+      rightShoulder: [0.03,   0.15,  0.18],
+      leftArm:       [-0.01, -0.25, -0.85],
+      rightArm:      [ 0.14,  0.28,  0.82],
+      leftForeArm:   [-0.80, -0.19, -0.01],
+      rightForeArm:  [-0.80,  0.22,  0.02],
     }
 
     Object.entries(pose).forEach(([boneName, rotation]) => {
@@ -330,12 +394,6 @@ class BasicCharacterController {
       rightLeg: [1.12, 0, 0],
       leftFoot: [-0.04, 0, 0],
       rightFoot: [-0.04, 0, 0],
-      leftShoulder: [0.08, 0.14, 0.05],
-      rightShoulder: [0.08, -0.14, -0.05],
-      leftArm: [0.28, 0.2, -0.08],
-      rightArm: [0.28, -0.2, 0.08],
-      leftForeArm: [-0.55, 0.08, -0.05],
-      rightForeArm: [-0.55, -0.08, 0.05],
     }
 
     Object.entries(pose).forEach(([boneName, rotation]) => {
@@ -344,19 +402,19 @@ class BasicCharacterController {
   }
 
   _applyKeyboardPose(weight) {
-    const tap = Math.sin(this._clock * 8.5) * 0.03
+    const tap = Math.sin(this._clock * 8.5) * 0.025
     const pose = {
-      spine1: [0.1, 0, 0],
-      spine2: [0.12, 0, 0],
-      neck: [0.06, 0, 0],
-      leftShoulder: [0.08, 0.18, 0.04],
-      rightShoulder: [0.08, -0.18, -0.04],
-      leftArm: [0.48, 0.35, -0.12],
-      rightArm: [0.48, -0.35, 0.12],
-      leftForeArm: [-0.92, 0.08, -0.08],
-      rightForeArm: [-0.92, -0.08, 0.08],
-      leftHand: [0.12 + tap, 0.06, 0.08],
-      rightHand: [0.12 - tap, -0.06, -0.08],
+      spine1:        [ 0.10,  0,      0    ],
+      spine2:        [ 0.13,  0,      0    ],
+      neck:          [ 0.08,  0,      0    ],
+      leftShoulder:  [ 0.02, -0.19,  -0.23 ],
+      rightShoulder: [ 0.03,  0.15,   0.18 ],
+      leftArm:       [ 1.40,  0,      0    ],
+      rightArm:      [ 1.40,  0,      0    ],
+      leftForeArm:   [-1.40,  -1.40,      0    ],
+      rightForeArm:  [-1.40,  +1.40,      0    ],
+      leftHand:      [-0.37 + tap, 0,  0   ],
+      rightHand:     [-0.37 - tap, 0,  0   ],
     }
 
     Object.entries(pose).forEach(([boneName, rotation]) => {
@@ -365,18 +423,19 @@ class BasicCharacterController {
   }
 
   _applyMousePose(weight) {
-    const mouseMotion = Math.sin(this._clock * 5.5) * 0.04
+    const mx = this._mouseSmoothedX
+    const my = this._mouseSmoothedY
     const pose = {
-      spine2: [0.1, -0.03, 0],
-      neck: [0.05, -0.02, 0],
-      leftShoulder: [0.05, 0.12, 0.03],
-      rightShoulder: [0.09, -0.24, -0.04],
-      leftArm: [0.32, 0.2, -0.1],
-      rightArm: [0.56, -0.44, 0.12],
-      leftForeArm: [-0.62, 0.08, -0.05],
-      rightForeArm: [-1.0, -0.08, 0.18],
-      leftHand: [0.08, 0.05, 0.05],
-      rightHand: [0.15 + mouseMotion, -0.06, -0.12],
+      spine2:        [ 0.10 + my * 0.12,  0,                0    ],
+      neck:          [ 0.06 + my * 0.08,  mx * 0.10,        0    ],
+      leftShoulder:  [ 0.02,             -0.19,            -0.23  ],
+      rightShoulder: [ 0.03,              0.15,             0.18  ],
+      leftArm:       [-0.01,             -0.25,            -0.85  ],
+      rightArm:      [ 1.40 + my * 0.15,  mx * 0.20,       0     ],
+      leftForeArm:   [-0.80,             -0.19,            -0.01  ],
+      rightForeArm:  [-1.40 ,  +1.18,       0     ],
+      leftHand:      [-0.37,             -0.27,            -0.04  ],
+      rightHand:     [-0.37 + my * 0.10,  mx * 0.12,       0     ],
     }
 
     Object.entries(pose).forEach(([boneName, rotation]) => {
@@ -392,13 +451,11 @@ class BasicCharacterController {
       this._animatedBoneRotations.get(bone.uuid) || this._boneBaseRotations.get(bone.uuid)
     if (!animatedRotation) return
 
-    this._tmpQuatA.copy(animatedRotation)
     this._tmpEuler.set(rotation[0], rotation[1], rotation[2], 'XYZ')
     this._tmpQuatB.setFromEuler(this._tmpEuler)
-    this._tmpQuatA.multiply(this._tmpQuatB)
+    this._tmpQuatA.copy(this._tmpQuatB)
     bone.quaternion.copy(animatedRotation).slerp(this._tmpQuatA, weight)
   }
-
 
   toggleSit(seat = 'chair') {
     if (this._interaction.mode === 'free') {
@@ -427,27 +484,41 @@ class BasicCharacterController {
     this.target.position.copy(this._interaction.seatPosition)
     this.target.quaternion.copy(this._interaction.seatQuaternion)
     this._position.copy(this.target.position)
+
+    // Debug bone rotations when seated
+    setTimeout(() => this.debugLogArmBones(), 500)
+
     return 'sit'
   }
 
   useDesk(tool = 'keyboard') {
     if (!this.target) return false
-    if (this._interaction.mode === 'free') return false
-    if (this._interaction.seat !== 'chair') return false
     if (tool !== 'keyboard' && tool !== 'mouse') return false
+
+    if (this._interaction.mode === 'free' || this._interaction.seat !== 'chair') {
+      const sitResult = this.sitOnSeat('chair')
+      if (!sitResult) return false
+    }
 
     this.velocity.set(0, 0, 0)
     this.stateMachine.setState('idle')
 
+    this._interaction.seat = 'chair'
     this._interaction.mode = tool
     this._interaction.targetPosition.copy(this._interaction.seatPosition)
     this._interaction.targetQuaternion.copy(this._interaction.seatQuaternion)
     this.target.position.copy(this._interaction.seatPosition)
     this.target.quaternion.copy(this._interaction.seatQuaternion)
     this._position.copy(this.target.position)
+
+    console.log('useDesk called, tool:', tool)
+    setTimeout(() => {
+      console.log('=== ARM BONES IN', tool.toUpperCase(), 'MODE ===')
+      this.debugLogArmBones()
+    }, 2000)
+
     return true
   }
-
   standUp() {
     if (!this.target) return null
 
@@ -471,6 +542,10 @@ class BasicCharacterController {
 
   get interactionMode() {
     return this._interaction.mode
+  }
+
+  get activeSeat() {
+    return this._interaction.mode === 'free' ? null : this._interaction.seat
   }
 
   get rotation() {

@@ -13,6 +13,7 @@ export class InteractionManager {
     onChairInteract,
     onSofaInteract,
     onDeskToolInteract,
+    getActiveSeat = () => null,
     isInspectMode = () => false,
     shouldBlockClick = () => false,
   }) {
@@ -27,6 +28,7 @@ export class InteractionManager {
     this.onChairInteract = onChairInteract
     this.onSofaInteract = onSofaInteract
     this.onDeskToolInteract = onDeskToolInteract
+    this.getActiveSeat = getActiveSeat
     this.isInspectMode = isInspectMode
     this.shouldBlockClick = shouldBlockClick
 
@@ -123,7 +125,18 @@ export class InteractionManager {
   _raycast() {
     this.raycaster.setFromCamera(this.mouse, this.camera)
     const hits = this.raycaster.intersectObjects(this.interactables)
-    return hits.length > 0 ? hits[0].object : null
+    if (hits.length === 0) return null
+
+    const activeSeat = this.getActiveSeat?.()
+    if (activeSeat === 'chair') {
+      const priority = ['keyboard', 'mouse', 'desk', 'chair']
+      for (const id of priority) {
+        const preferredHit = hits.find((hit) => hit.object.userData.interactableId === id)
+        if (preferredHit) return preferredHit.object
+      }
+    }
+
+    return hits[0].object
   }
 
   _toggleLamp() {
