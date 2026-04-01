@@ -541,7 +541,7 @@ export function buildSofa(scene) {
   const rightSofa = createSofa()
   rightSofa.position.set(-27, 0, 11)
 
-  return leftSofa
+  return [leftSofa, rightSofa]
 }
 
 export function buildCeilingLight(scene) {

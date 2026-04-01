@@ -93,10 +93,10 @@ class OfficeApp {
     this.shelfGroup   = buildShelf(this.scene)
     this.lampGroup    = buildLamp(this.scene)
     this.frameGroup   = buildWallFrame(this.scene)
-    buildKeyboard(this.scene)
-    buildMouse(this.scene)
+    this.keyboardGroup = buildKeyboard(this.scene)
+    this.mouseGroup = buildMouse(this.scene)
     buildFloorPlant(this.scene)
-    buildSofa(this.scene)
+    this.sofaGroups = buildSofa(this.scene)
     buildTrashBin(this.scene)
   }
 
@@ -113,20 +113,28 @@ class OfficeApp {
     })
 
     // Camera focus state
+    this._defaultFov = this.camera.fov
     this._focusActive  = false
     this._focusPos     = new THREE.Vector3()
     this._focusLook    = new THREE.Vector3()
     this._focusLookCur = new THREE.Vector3()
+    this._focusFov = this.camera.fov
+    this._focusLookLerp = 0.05
+    this._focusPositionLerp = 0.05
 
     // Return to third-person on any movement key
     const moveKeys = new Set(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'])
     window.addEventListener('keydown', (e) => {
       if (moveKeys.has(e.key.toLowerCase()) && this._focusActive) {
-        this._focusActive = false
+        this._clearFocus()
       }
 
       if (moveKeys.has(e.key.toLowerCase()) && this._inspectMode) {
         this._setInspectMode(false)
+      }
+
+      if (moveKeys.has(e.key.toLowerCase()) && this.controls?.isSeated()) {
+        this.controls.standUp()
       }
     })
   }
@@ -157,7 +165,7 @@ class OfficeApp {
 
   _setInspectMode(active) {
     this._inspectMode = active
-    this._focusActive = false
+    this._clearFocus()
 
     if (active) {
       this._applyInspectCamera()
@@ -230,11 +238,18 @@ class OfficeApp {
       lampLight: this.lampLight,
       lampGroup: this.lampGroup,
       frameGroups: [this.frameGroup],
-      onCameraFocus: (pos, look) => {
+      onChairInteract: () => this.controls?.toggleSit(),
+      onSofaInteract: (seatIndex) => this.controls?.toggleSit(`sofa${seatIndex}`),
+      onDeskToolInteract: (tool) => this.controls?.useDesk(tool),
+      onCameraReset: () => this._clearFocus(),
+      onCameraFocus: ({ pos, look, fov = this._defaultFov, positionLerp = 0.05, lookLerp = 0.05 }) => {
         this._setInspectMode(false)
         this._focusPos.copy(pos)
         this._focusLook.copy(look)
-        this._focusLookCur.copy(this.camera.position)
+        this._focusLookCur.copy(this._focusActive ? this._focusLookCur : this.camera.position)
+        this._focusFov = fov
+        this._focusPositionLerp = positionLerp
+        this._focusLookLerp = lookLerp
         this._focusActive = true
       },
       isInspectMode: () => this._inspectMode,
@@ -245,10 +260,22 @@ class OfficeApp {
     this.interactions.register(this.lampGroup,    'lamp',    '💡 Click to toggle lamp on/off')
     this.interactions.register(this.laptopGroup,  'laptop',  '💻 Click to open laptop')
     this.interactions.register(this.monitorGroup, 'monitor', '🖥️ Click to view project showcase')
-    this.interactions.register(this.chairGroup,   'chair',   '🪑 Click to focus desk view')
+    this.interactions.register(this.chairGroup,   'chair',   '🪑 Click to sit or stand from the chair')
     this.interactions.register(this.deskGroup,    'desk',    '🖥 Click to focus desk area')
+    this.interactions.register(this.keyboardGroup,'keyboard','⌨️ Click to type with the keyboard')
+    this.interactions.register(this.mouseGroup,   'mouse',   '🖱️ Click to use the mouse')
+    this.sofaGroups.forEach((sofaGroup, index) => {
+      this.interactions.register(sofaGroup, `sofa-${index}`, '🛋️ Click to sit or stand from the sofa')
+    })
     this.interactions.register(this.shelfGroup,   'shelf',   '📚 Click to browse bookshelf')
     this.interactions.register(this.frameGroup,   'frame',   '🎨 Click to open Art Studio')
+  }
+
+  _clearFocus() {
+    this._focusActive = false
+    this._focusFov = this._defaultFov
+    this._focusPositionLerp = 0.05
+    this._focusLookLerp = 0.05
   }
 
   _setupResize() {
@@ -277,10 +304,14 @@ class OfficeApp {
       this.camera.lookAt(this._inspectTarget)
     } else if (this._focusActive) {
       // Smooth camera lerp to focus position
-      this.camera.position.lerp(this._focusPos, 0.05)
-      this._focusLookCur.lerp(this._focusLook, 0.05)
+      this.camera.position.lerp(this._focusPos, this._focusPositionLerp)
+      this._focusLookCur.lerp(this._focusLook, this._focusLookLerp)
+      this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, this._focusFov, 0.08)
+      this.camera.updateProjectionMatrix()
       this.camera.lookAt(this._focusLookCur)
     } else {
+      this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, this._defaultFov, 0.08)
+      this.camera.updateProjectionMatrix()
       this.thirdPersonCamera?.update(deltaTime)
     }
 
