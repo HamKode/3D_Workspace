@@ -1,4 +1,7 @@
 import * as THREE from 'three'
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader'
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
+import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader'
 
 const mat = (color, opts = {}) => new THREE.MeshStandardMaterial({ color, ...opts })
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d)
@@ -168,7 +171,7 @@ export function buildMonitor(scene) {
   
   // Load Kali Linux wallpaper texture
   const textureLoader = new THREE.TextureLoader()
-  const wallpaperTexture = textureLoader.load('https://www.kali.org/images/wallpapers/kali-linux-wallpaper-1920x1080.jpg')
+  const wallpaperTexture = textureLoader.load('images/kali_linux_wallpaper.jpg')
   const screenMat = new THREE.MeshStandardMaterial({ map: wallpaperTexture, roughness: 0.05 })
 
   const panel = mkMesh(box(14, 8, 0.4), frameMat)
@@ -194,7 +197,7 @@ export function buildMonitor(scene) {
 
 export function buildChair(scene) {
   const group = new THREE.Group()
-  const fabricMat = mat(0x1A1A1A, { roughness: 0.9 })  // Black leather for realistic office chair
+  const fabricMat = mat(0x1A1A1A, { roughness: 0.9 })
   const metalMat  = mat(0x555555, { roughness: 0.3, metalness: 0.8 })
 
   const seat = mkMesh(box(8, 0.8, 8), fabricMat)
@@ -235,7 +238,6 @@ export function buildChair(scene) {
     group.add(wheel)
   }
 
-  // Pulled out from desk, centered, facing the desk (rotated 180°)
   group.position.set(0, 0.25, -10)
   group.rotation.y = Math.PI
   group.scale.set(0.82, 0.84, 0.72)
@@ -430,30 +432,46 @@ export function buildMouse(scene) {
 }
 
 export function buildFloorPlant(scene) {
-  const group = new THREE.Group()
-  // Pot
-  const pot = mkMesh(cyl(2.5, 2, 5, 12), mat(0xF0EDE8, { roughness: 0.9 }))
-  pot.position.set(0, 2.5, 0)
-  group.add(pot)
-  // Soil top
-  const soil = mkMesh(cyl(2.4, 2.4, 0.3, 12), mat(0x3d2b1f, { roughness: 1 }))
-  soil.position.set(0, 5.2, 0)
-  group.add(soil)
-  // Main bush
-  const bush = mkMesh(new THREE.ConeGeometry(3, 6, 10), mat(0x2D5016, { roughness: 1 }))
-  bush.position.set(0, 11, 0)
-  bush.scale.set(1, 1.1, 1)
-  group.add(bush)
-  // Smaller accent cones
-  ;[[-2.5, 9.5, 1.5], [2, 10, -1.5], [0, 13.5, 1], [-1.5, 12, -2]].forEach(([x, y, z]) => {
-    const leaf = mkMesh(new THREE.ConeGeometry(1.5, 3, 8), mat(0x4A7C23, { roughness: 1 }))
-    leaf.position.set(x, y, z)
-    group.add(leaf)
-  })
-  // Left side near desk, under window
-  group.position.set(-25, 0.25, -19)
-  scene.add(group)
-  return group
+  const mtlLoader = new MTLLoader()
+  mtlLoader.setPath('/models/plantpot/')
+  
+  mtlLoader.load(
+    'asd.mtl',
+    (materials) => {
+      materials.preload()
+      
+      const objLoader = new OBJLoader()
+      objLoader.setMaterials(materials)
+      objLoader.setPath('/models/plantpot/')
+      
+      objLoader.load(
+        'asd.obj',
+        (obj) => {
+          obj.traverse((child) => {
+            if (child.isMesh) {
+              child.castShadow = true
+              child.receiveShadow = true
+            }
+          })
+          
+          obj.scale.set(45, 45, 55)
+          obj.position.set(-25, 0.25, -19)
+          scene.add(obj)
+          console.log('Plant pot added to scene')
+        },
+        undefined,
+        (error) => {
+          console.error('OBJ load error:', error)
+        }
+      )
+    },
+    undefined,
+    (error) => {
+      console.error('MTL load error:', error)
+    }
+  )
+
+  return null
 }
 
 export function buildTrashBin(scene) {
@@ -496,50 +514,47 @@ export function buildTrashBin(scene) {
 }
 
 export function buildSofa(scene) {
-  const fabricMat = mat(0x1A1A1A, { roughness: 0.9 })  // Black leather like chair
-  const woodMat = mat(0x3D1F0D, { roughness: 0.7 })  // Matching bookshelf
-  const createSofa = () => {
-    const group = new THREE.Group()
+  const loader = new FBXLoader()
+  const sofas = []
 
-    // Seat
-    const seat = mkMesh(box(10, 1, 6), fabricMat)
-    seat.position.set(0, 2, 0)
-    group.add(seat)
+  loader.load(
+    '/models/sofa.fbx',
+    (fbx) => {
+      console.log('Sofa loaded successfully!', fbx)
+      fbx.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true
+          child.receiveShadow = true
+        }
+      })
 
-    // Back
-    const back = mkMesh(box(10, 8, 1), fabricMat)
-    back.position.set(0, 6, -2.5)
-    group.add(back)
+      // Left sofa
+      const leftSofa = fbx.clone()
+      leftSofa.scale.set(0.05, 0.05, 0.05)
+      leftSofa.position.set(-26, 1, 0)
+      leftSofa.rotation.x = -Math.PI / 2
+      leftSofa.rotation.z =  Math.PI / 2
+      scene.add(leftSofa)
+      sofas.push(leftSofa)
 
-    // Left arm
-    const leftArm = mkMesh(box(1, 6, 6), fabricMat)
-    leftArm.position.set(-4.5, 5, 0)
-    group.add(leftArm)
+      // Right sofa
+      const rightSofa = fbx.clone()
+      rightSofa.scale.set(0.05, 0.05, 0.05)
+      rightSofa.position.set(-26, 1, 12)
+      rightSofa.rotation.x = -Math.PI / 2
+      rightSofa.rotation.z =  Math.PI / 2
+      scene.add(rightSofa)
+      sofas.push(rightSofa)
+    },
+    (progress) => {
+      console.log('Loading sofa:', (progress.loaded / progress.total * 100) + '%')
+    },
+    (error) => {
+      console.error('Error loading sofa:', error)
+    }
+  )
 
-    // Right arm
-    const rightArm = mkMesh(box(1, 6, 6), fabricMat)
-    rightArm.position.set(4.5, 5, 0)
-    group.add(rightArm)
-
-    // Legs
-    ;[[-4, 0.5, -2.5], [4, 0.5, -2.5], [-4, 0.5, 2.5], [4, 0.5, 2.5]].forEach(([x, y, z]) => {
-      const leg = mkMesh(box(0.5, 1, 0.5), woodMat)
-      leg.position.set(x, y, z)
-      group.add(leg)
-    })
-
-    group.rotation.y = Math.PI / 2  // Face the room
-    scene.add(group)
-    return group
-  }
-
-  const leftSofa = createSofa()
-  leftSofa.position.set(-27, 0, 0)
-
-  const rightSofa = createSofa()
-  rightSofa.position.set(-27, 0, 11)
-
-  return [leftSofa, rightSofa]
+  return sofas
 }
 
 export function buildCeilingLight(scene) {

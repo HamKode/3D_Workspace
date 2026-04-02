@@ -54,6 +54,19 @@ module.exports = {
         ],
       },
 
+      // 3D Models
+      {
+        test: /\.(fbx|obj|mtl|dae)$/,
+        use: [
+          {
+            loader: 'file-loader',
+            options: {
+              outputPath: 'models/',
+            },
+          },
+        ],
+      },
+
       // Fonts
       {
         test: /\.(ttf|eot|woff|woff2)$/,

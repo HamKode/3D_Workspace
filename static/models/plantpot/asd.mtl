@@ -1,0 +1,14 @@
+newmtl Soil
+d 1
+Kd 0.64313728 0.54509807 0.47450981
+map_Kd ./Maps/3DStyle_AFH_Groudn_Texture.jpg
+
+newmtl Pot
+d 1
+Kd 0.92941177 0.92941177 0.92941177
+
+newmtl Leaves
+d 1
+Kd 0.80000001 0.80000001 0.80000001
+map_Kd ./Maps/3DStyle_AFH_LR_PlantInPot_Leaf.jpg
+
